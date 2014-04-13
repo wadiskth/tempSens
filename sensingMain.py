@@ -1,6 +1,7 @@
 
 from tempSensing import Temp
 from mediaScanner import *
+from arduino_connection import ArduinoConnection
 import time
 from time import strftime
 from datetime import datetime
@@ -55,12 +56,13 @@ def get_time():
 
 def get_first_empty_cell():
     i = 1
+    print worksheet.row_count
     while i < worksheet.row_count:
-        print i
-        print worksheet.cell(i,1)
         if worksheet.cell(i,1).value==None:
 	    return i;
+	print 'i got here' + str(i)
 	i = i+1
+    return (i+1)
 
 def increase_ws_size(k):
    if k > worksheet.row_count:
@@ -75,11 +77,13 @@ spreadsheet = 'Temperature_log' #the name of the spreadsheet already created
 try:
    gc = gspread.login(email,password)
 except:
-    print('fail')
-    sys.exit()
+    print('fail to login to email')
  
 #open the spreadsheet
-worksheet = gc.open(spreadsheet).sheet1
+try:
+    worksheet = gc.open(spreadsheet).sheet1
+except:
+    print 'fail to open the spreadsheet'
 
 #replace tempId with the id of your temperature probe, inits the gpio pins.
 wortTemp=Temp(fileName='28-0000057a672b')
@@ -87,6 +91,10 @@ wortTemp.start()
 
 ms = MediaScanner()
 devices = ms.scan_media()
+
+arduinoAnalog=ArduinoConnection()
+arduinoAnalog.start()
+arduinoAnalogValues = [0.0] * 6
 
 print 'Start date is: ', get_date(), get_time()
 
@@ -96,25 +104,52 @@ print devices
 if devices:
     for device in devices:
         mount_partition(get_partition(device))
-#the rest of your code is below. 
-# The Temp class will be updating on its own thread which will allow you to do 
-#  anything you want on the main thread.
-flag = True;
-k = get_first_empty_cell();
-print (str("this is k"))
-print k
-worksheet.resize(5,3) 
+#   the rest of your code is below. 
+#   The Temp class will be updating on its own thread which will allow you to do 
+#   anything you want on the main thread.
+flag = True
+try:
+    k = get_first_empty_cell()
+    worksheet.resize(k,9)
+except:
+    k = 0
+    print "Failed to resize worksheet"
+SEPARATOR = ';'
+
 while (flag ):
+    arduinoAnalogValues = arduinoAnalog.getMeanAnalogArduinoValueArray()    
     print str("Current temprature :")
     print str(wortTemp.getCurrentTemp())
-    values = str(get_date()) + ',' + str(get_time()) + ',' + str(wortTemp.getCurrentTemp())
-    write_and_verify('/media/usb0/temp_.csv', values)
-    worksheet.update_cell(k,1,get_date())
-    worksheet.update_cell(k,2,str(get_time()))
-    worksheet.update_cell(k,3, str(wortTemp.getCurrentTemp()))
-    k = k +1
-    increase_ws_size(k);
-    time.sleep(3)
+    values = str(get_date()) + SEPARATOR + str(get_time()) + SEPARATOR + str(wortTemp.getCurrentTemp())
+    
+    for i in range(len(arduinoAnalogValues)):
+        values = values + SEPARATOR + str(arduinoAnalogValues[i])
+        
+    write_and_verify('/media/usb0/temp.csv', values)
+    try:
+        worksheet.update_cell(k,1,get_date())
+    except:
+        print 'cell 1 not updated'
+    try:
+        worksheet.update_cell(k,2,str(get_time()))
+    except:
+        print 'cell 2 not updated'
+    try:
+        worksheet.update_cell(k,3, str(wortTemp.getCurrentTemp()))
+    except:
+        print 'cell 3 not updated'
+
+    for i in range(len(arduinoAnalogValues)):
+        try:
+            worksheet.update_cell(k,4+i, str(arduinoAnalogValues[i]))
+        except:
+            print 'cell ' +str(4+i)+ ' not updated'
+    k = k + 1
+    try:
+        increase_ws_size(k);
+    except:
+        print "Couldnt resize the worksheet"
+    time.sleep(2)
 unmount_partition()
 
 
