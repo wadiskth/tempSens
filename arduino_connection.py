@@ -9,7 +9,7 @@ class ArduinoConnection(Thread):
         Thread.__init__(self)
         
         self.SAMPLING_INTERVAL = 0.100
-        self.MEAN_INTERVAL = 2
+        self.MEAN_INTERVAL = 5
         self.MEAN_SAMPLES_NUMBER = round(self.MEAN_INTERVAL/self.SAMPLING_INTERVAL)
 
         PORT = '/dev/ttyACM0'

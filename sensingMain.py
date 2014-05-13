@@ -136,7 +136,7 @@ allValuesArray = [0.0] * 9
 flag = True
 SEPARATOR = ';'
 k = 1
-flagWriteToFile = False
+flagWriteToFile = True
 flagWriteToInternet = False
 worksheet = None
 
@@ -173,7 +173,7 @@ wortTemp.start()
 print 'Start date is: ', get_date(), get_time()
 
 
-while (flag ):
+while (flag):
     arduinoAnalogValues = arduinoAnalog.getMeanAnalogArduinoValueArray()
     
     allValuesArray[0] = get_date();
